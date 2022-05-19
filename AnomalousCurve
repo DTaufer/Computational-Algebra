@@ -1,0 +1,53 @@
+p := 730750818665451459112596905638433048232067471723;
+A := 425706413842211054102700238164133538302169176474;
+B := 203362936548826936673264444982866339953265530166;
+E := EllipticCurve([GF(p)!A,B]);
+P := Random(E); Q := Random(E);
+IsPrime(#E);
+//time n := Log(P,Q);
+//n*P eq Q;
+
+function AffineLift(P, A, B)
+	local Z,p,Zp2;
+	Z := Integers();
+	p := Characteristic(Parent(P[1]));
+	Zp2 := Integers(p^2);
+	return [Zp2!Z!P[1], Zp2!Z!P[2] + Zp2!((Z!P[1]^3+A*Z!P[1]+B-Z!P[2]^2)/(2*Z!P[2])), Zp2!1];
+end function;
+
+function AL2(A,B, P1, P2)
+	local x1,y1,z1,x2,y2,z2,X2,Y2,Z2;
+	x1 := P1[1]; y1 := P1[2]; z1 := P1[3];
+	x2 := P2[1]; y2 := P2[2]; z2 := P2[3];
+
+	X2 := ( y1*y2*(x1*y2 + x2*y1) - A*x1*x2*(y1*z2 + y2*z1) - A*(x1*y2 + x2*y1)*(x1*z2 + x2*z1) - 3*B*(x1*y2 + x2*y1)*z1*z2 - 3*B*(x1*z2 + x2*z1)*(y1*z2 + y2*z1) + A^2 *(y1*z2 + y2*z1)*z1*z2 );
+	Y2 := ( y1^2*y2^2 + 3*A*x1^2*x2^2 + 9*B*x1*x2*(x1*z2 + x2*z1) - A^2*x1*z2*(x1*z2 + 2*x2*z1) - A^2*x2*z1*(2*x1*z2 + x2*z1) - 3*A*B*z1*z2*(x1*z2 + x2*z1)- (A^3 + 9*B^2)*z1^2*z2^2 );
+	Z2 := ( 3*x1*x2*(x1*y2 + x2*y1) + y1*y2*(y1*z2 + y2*z1) + A*(x1*y2 + x2*y1)*z1*z2 + A*(x1*z2 + x2*z1)*(y1*z2 + y2*z1) + 3*B*(y1*z2 + y2*z1)*z1*z2 );
+return [X2,Y2,Z2];
+end function;
+
+function ScalarMult(A,B, n, P) //AL2(A,B, P1, P2)
+	local tot, sign;
+	sign := Sign(n);
+	tot := [0, 1, 0];
+	for i in Reverse(Intseq(n*sign, 2)) do
+    		tot := AL2(A,B, tot, tot);
+    		if i eq 1 then
+        		tot := AL2(A,B, tot, P);
+    		end if;
+	end for;
+	if sign eq -1 then
+    		tot := [tot[1], -tot[2], tot[3]]; 
+	end if;
+	return tot;
+end function;
+
+Pl := AffineLift(P, A, B);
+Ql := AffineLift(Q, A, B);
+
+pPl := ScalarMult(A,B, p, Pl); ap := pPl[1]/pPl[2];
+pQl := ScalarMult(A,B, p, Ql); bp := pQl[1]/pQl[2];
+
+N := Integers()!( GF(p)!( (Integers()!bp)/(Integers()!ap) ) );
+
+Q eq N*P;
